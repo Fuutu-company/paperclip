@@ -38,6 +38,8 @@ import { agentConfigurationDoc as geminiAgentConfigurationDoc, models as geminiM
 import {
   execute as openRouterExecute,
   testEnvironment as openRouterTestEnvironment,
+  listOpenRouterSkills,
+  syncOpenRouterSkills,
 } from "@paperclipai/adapter-openrouter-local/server";
 import { agentConfigurationDoc as openRouterAgentConfigurationDoc, models as openRouterModels } from "@paperclipai/adapter-openrouter-local";
 import {
@@ -139,6 +141,8 @@ const openRouterLocalAdapter: ServerAdapterModule = {
   type: "openrouter_local",
   execute: openRouterExecute,
   testEnvironment: openRouterTestEnvironment,
+  listSkills: listOpenRouterSkills,
+  syncSkills: syncOpenRouterSkills,
   models: openRouterModels,
   supportsLocalAgentJwt: false,
   agentConfigurationDoc: openRouterAgentConfigurationDoc,

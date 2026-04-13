@@ -647,6 +647,7 @@ export function agentRoutes(db: Db) {
     "gemini_local",
     "opencode_local",
     "pi_local",
+    "openrouter_local",
   ]);
 
   function shouldMaterializeRuntimeSkillsForAdapter(adapterType: string) {
