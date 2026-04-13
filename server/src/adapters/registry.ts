@@ -36,6 +36,11 @@ import {
 } from "@paperclipai/adapter-gemini-local/server";
 import { agentConfigurationDoc as geminiAgentConfigurationDoc, models as geminiModels } from "@paperclipai/adapter-gemini-local";
 import {
+  execute as openRouterExecute,
+  testEnvironment as openRouterTestEnvironment,
+} from "@paperclipai/adapter-openrouter-local/server";
+import { agentConfigurationDoc as openRouterAgentConfigurationDoc, models as openRouterModels } from "@paperclipai/adapter-openrouter-local";
+import {
   execute as openCodeExecute,
   listOpenCodeSkills,
   syncOpenCodeSkills,
@@ -130,6 +135,15 @@ const cursorLocalAdapter: ServerAdapterModule = {
   agentConfigurationDoc: cursorAgentConfigurationDoc,
 };
 
+const openRouterLocalAdapter: ServerAdapterModule = {
+  type: "openrouter_local",
+  execute: openRouterExecute,
+  testEnvironment: openRouterTestEnvironment,
+  models: openRouterModels,
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: openRouterAgentConfigurationDoc,
+};
+
 const geminiLocalAdapter: ServerAdapterModule = {
   type: "gemini_local",
   execute: geminiExecute,
@@ -212,6 +226,7 @@ function registerBuiltInAdapters() {
     piLocalAdapter,
     cursorLocalAdapter,
     geminiLocalAdapter,
+    openRouterLocalAdapter,
     openclawGatewayAdapter,
     hermesLocalAdapter,
     processAdapter,
