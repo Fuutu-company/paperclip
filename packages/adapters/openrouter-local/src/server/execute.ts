@@ -287,9 +287,22 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     null;
   const promptTemplate = asString(configObj.promptTemplate, "").trim();
 
+  // Auto-fetch issue content so agent doesn't need to ask for context
+  let issueContext = "";
+  if (taskId && authToken) {
+    try {
+      const issue = await pcFetch(serverUrl, `/companies/${agent.companyId}/issues/${taskId}`, "GET", authToken) as Record<string, unknown>;
+      const title = String(issue.title ?? "");
+      const body = String(issue.body ?? "");
+      issueContext = `\n\n## Your current task\n**${title}**\n\n${body}`.trim();
+    } catch {
+      // non-fatal — agent can still use list_issues tool
+    }
+  }
+
   const userPromptParts = [
     `You are agent "${agent.name}" (id: ${agent.id}) in company ${agent.companyId}. Run ID: ${runId}.`,
-    taskId ? `Current task: ${taskId}` : "",
+    taskId ? `Current task ID: ${taskId}${issueContext}` : "",
     wakeReason ? `Wake reason: ${wakeReason}` : "",
     promptTemplate,
   ].filter(Boolean);
