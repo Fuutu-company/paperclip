@@ -287,26 +287,42 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     null;
   const promptTemplate = asString(configObj.promptTemplate, "").trim();
 
-  // Auto-fetch issue content so agent starts with full context
+  // Auto-fetch issue content so agent starts with full context.
+  // taskId may be a UUID or an identifier (e.g. "FUU-14" or "EEF861A8-0396").
+  // The server normalizes /^[A-Z]+-\d+$/ identifiers but not hex-segment ones,
+  // so we always try UUID-style lookup first, then fall back to list+filter.
   let issueContext = "";
   if (taskId && authToken) {
     try {
-      const issue = await pcFetch(serverUrl, `/companies/${agent.companyId}/issues/${taskId}`, "GET", authToken) as Record<string, unknown>;
-      const title = String(issue.title ?? "");
-      const description = String(issue.description ?? "");
-      const identifier = String(issue.identifier ?? "");
-      const priority = String(issue.priority ?? "");
-      const status = String(issue.status ?? "");
-      const project = issue.project as Record<string, unknown> | null ?? null;
-      const goal = issue.goal as Record<string, unknown> | null ?? null;
-      const parts = [
-        `## Task: ${identifier ? `[${identifier}] ` : ""}${title}`,
-        `Status: ${status} | Priority: ${priority}`,
-        project ? `Project: ${String(project.name ?? "")}` : "",
-        goal ? `Goal: ${String(goal.title ?? "")}` : "",
-        description ? `\n${description}` : "",
-      ].filter(Boolean);
-      issueContext = parts.join("\n");
+      let issue: Record<string, unknown> | null = null;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId);
+      const isStdIdentifier = /^[A-Z]+-\d+$/i.test(taskId);
+      if (isUuid || isStdIdentifier) {
+        // Direct lookup — server handles both UUIDs and standard identifiers
+        issue = await pcFetch(serverUrl, `/companies/${agent.companyId}/issues/${encodeURIComponent(taskId)}`, "GET", authToken) as Record<string, unknown>;
+      } else {
+        // Non-standard identifier (e.g. hex-segment) — scan and match by identifier field
+        const all = await pcFetch(serverUrl, `/companies/${agent.companyId}/issues`, "GET", authToken);
+        const arr = Array.isArray(all) ? all as Record<string, unknown>[] : [];
+        issue = arr.find((i) => String(i.identifier ?? "").toUpperCase() === taskId.toUpperCase()) ?? null;
+      }
+      if (issue) {
+        const title = String(issue.title ?? "");
+        const description = String(issue.description ?? "");
+        const identifier = String(issue.identifier ?? "");
+        const priority = String(issue.priority ?? "");
+        const status = String(issue.status ?? "");
+        const project = issue.project as Record<string, unknown> | null ?? null;
+        const goal = issue.goal as Record<string, unknown> | null ?? null;
+        const parts = [
+          `## Task: ${identifier ? `[${identifier}] ` : ""}${title}`,
+          `Status: ${status} | Priority: ${priority}`,
+          project ? `Project: ${String(project.name ?? "")}` : "",
+          goal ? `Goal: ${String(goal.title ?? "")}` : "",
+          description ? `\n${description}` : "",
+        ].filter(Boolean);
+        issueContext = parts.join("\n");
+      }
     } catch (err) {
       await onLog("stderr", `[paperclip] Warning: could not fetch issue context: ${err instanceof Error ? err.message : String(err)}\n`);
     }
