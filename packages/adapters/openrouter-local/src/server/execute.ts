@@ -1,7 +1,14 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import nodePath from "node:path";
 import type { AdapterExecutionContext, AdapterExecutionResult } from "@paperclipai/adapter-utils";
-import { asString, asNumber, parseObject } from "@paperclipai/adapter-utils/server-utils";
+import {
+  asString,
+  asNumber,
+  parseObject,
+  renderTemplate,
+  renderPaperclipWakePrompt,
+  joinPromptSections,
+} from "@paperclipai/adapter-utils/server-utils";
 import { DEFAULT_OPENROUTER_MODEL, OPENROUTER_API_BASE } from "../index.js";
 
 // ---------------------------------------------------------------------------
@@ -97,7 +104,7 @@ function buildToolDefs(skillsDir: string): ToolDef[] {
       type: "function",
       function: {
         name: "load_skill",
-        description: `Load a SKILL.md file to get domain-specific instructions. Available skills: ${available.join(", ") || "none — create ~/.paperclip/skills/<name>/SKILL.md"}.`,
+        description: `Load a SKILL.md file to get domain-specific instructions. Available skills: ${available.join(", ") || "none"}.`,
         parameters: {
           type: "object",
           properties: { skill: { type: "string", description: "Skill directory name" } },
@@ -109,7 +116,7 @@ function buildToolDefs(skillsDir: string): ToolDef[] {
       type: "function",
       function: {
         name: "list_agents",
-        description: "List all agents in the company.",
+        description: "List all agents in the company with their roles, status, and capabilities.",
         parameters: { type: "object", properties: {}, required: [] },
       },
     },
@@ -117,15 +124,17 @@ function buildToolDefs(skillsDir: string): ToolDef[] {
       type: "function",
       function: {
         name: "hire_agent",
-        description: "Create a new agent. Always use adapterType openrouter_local. Do NOT set a premium model.",
+        description: "Hire (create) a new agent for the company. Always use adapterType openrouter_local. Set a clear systemPrompt describing the agent's role and responsibilities, and set promptTemplate to include their reporting structure.",
         parameters: {
           type: "object",
           properties: {
-            name: { type: "string" },
+            name: { type: "string", description: "Agent's full name" },
             role: { type: "string", enum: ["ceo", "cto", "cmo", "coo", "engineer", "designer", "qa", "researcher", "general"] },
-            title: { type: "string" },
-            capabilities: { type: "string" },
-            budgetMonthlyCents: { type: "integer", default: 500 },
+            title: { type: "string", description: "Job title, e.g. 'Lead Engineer'" },
+            capabilities: { type: "string", description: "What this agent specializes in" },
+            systemPrompt: { type: "string", description: "The agent's core identity, responsibilities and behavioral guidelines" },
+            promptTemplate: { type: "string", description: "The heartbeat prompt template. Include reporting instructions and task approach." },
+            budgetMonthlyCents: { type: "integer", description: "Monthly budget in cents, e.g. 500 = $5", default: 500 },
           },
           required: ["name", "role"],
         },
@@ -135,11 +144,12 @@ function buildToolDefs(skillsDir: string): ToolDef[] {
       type: "function",
       function: {
         name: "list_issues",
-        description: "List issues/tasks. Use status='open' by default.",
+        description: "List issues/tasks in the company. Filter by status to find work.",
         parameters: {
           type: "object",
           properties: {
-            status: { type: "string", enum: ["open", "in_progress", "done", "cancelled", "all"], default: "open" },
+            status: { type: "string", description: "Filter by status. Use comma-separated values or 'all'.", default: "todo,in_progress,backlog" },
+            assigneeAgentId: { type: "string", description: "Filter by agent ID" },
           },
           required: [],
         },
@@ -148,15 +158,29 @@ function buildToolDefs(skillsDir: string): ToolDef[] {
     {
       type: "function",
       function: {
+        name: "get_issue",
+        description: "Get full details of a specific issue by ID or identifier (e.g. FUU-14).",
+        parameters: {
+          type: "object",
+          properties: {
+            issueId: { type: "string", description: "Issue UUID or identifier like FUU-14" },
+          },
+          required: ["issueId"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
         name: "create_issue",
-        description: "Create a new task/issue.",
+        description: "Create a new task/issue and optionally assign it to an agent.",
         parameters: {
           type: "object",
           properties: {
             title: { type: "string" },
-            body: { type: "string" },
-            assigneeAgentId: { type: "string" },
-            priority: { type: "string", enum: ["low", "medium", "high", "critical"], default: "medium" },
+            description: { type: "string", description: "Detailed description in markdown" },
+            assigneeAgentId: { type: "string", description: "Agent ID to assign to" },
+            priority: { type: "string", enum: ["low", "medium", "high", "urgent"], default: "medium" },
           },
           required: ["title"],
         },
@@ -166,16 +190,47 @@ function buildToolDefs(skillsDir: string): ToolDef[] {
       type: "function",
       function: {
         name: "update_issue",
-        description: "Update an issue status or assignee.",
+        description: "Update an issue's status, priority, assignee, or description.",
         parameters: {
           type: "object",
           properties: {
-            issueId: { type: "string" },
-            status: { type: "string", enum: ["open", "in_progress", "done", "cancelled"] },
+            issueId: { type: "string", description: "Issue UUID or identifier" },
+            status: { type: "string", enum: ["backlog", "todo", "in_progress", "in_review", "done", "cancelled"] },
+            priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
             assigneeAgentId: { type: "string" },
-            body: { type: "string" },
+            description: { type: "string" },
+            title: { type: "string" },
           },
           required: ["issueId"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "checkout_issue",
+        description: "Check out an issue to claim it for the current run. Do this before starting work on a task.",
+        parameters: {
+          type: "object",
+          properties: {
+            issueId: { type: "string", description: "Issue UUID or identifier to check out" },
+          },
+          required: ["issueId"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "post_comment",
+        description: "Post a comment on an issue. Use to report progress, ask questions, or summarize findings.",
+        parameters: {
+          type: "object",
+          properties: {
+            issueId: { type: "string", description: "Issue UUID or identifier" },
+            body: { type: "string", description: "Comment text in markdown" },
+          },
+          required: ["issueId", "body"],
         },
       },
     },
@@ -217,27 +272,36 @@ async function executeTool(
       return JSON.stringify(agents, null, 2);
     }
     if (name === "hire_agent") {
+      const adapterConfig: Record<string, unknown> = {};
+      if (args.systemPrompt) adapterConfig.systemPrompt = args.systemPrompt;
+      if (args.promptTemplate) adapterConfig.promptTemplate = args.promptTemplate;
       const result = await pcFetch(serverUrl, `/companies/${companyId}/agent-hires`, "POST", token, {
         name: args.name,
         role: args.role,
         title: args.title ?? null,
         capabilities: args.capabilities ?? null,
         adapterType: "openrouter_local",
-        adapterConfig: {},
+        adapterConfig,
         budgetMonthlyCents: args.budgetMonthlyCents ?? 500,
       });
       return JSON.stringify(result, null, 2);
     }
     if (name === "list_issues") {
-      const status = String(args.status ?? "open");
-      const qs = status !== "all" ? `?status=${status}` : "";
+      const status = String(args.status ?? "todo,in_progress,backlog");
+      const assigneeQs = args.assigneeAgentId ? `&assigneeAgentId=${encodeURIComponent(String(args.assigneeAgentId))}` : "";
+      const qs = `?status=${encodeURIComponent(status)}${assigneeQs}`;
       const result = await pcFetch(serverUrl, `/companies/${companyId}/issues${qs}`, "GET", token);
+      return JSON.stringify(result, null, 2);
+    }
+    if (name === "get_issue") {
+      const issueId = encodeURIComponent(String(args.issueId ?? ""));
+      const result = await pcFetch(serverUrl, `/companies/${companyId}/issues/${issueId}`, "GET", token);
       return JSON.stringify(result, null, 2);
     }
     if (name === "create_issue") {
       const result = await pcFetch(serverUrl, `/companies/${companyId}/issues`, "POST", token, {
         title: args.title,
-        body: args.body ?? "",
+        description: args.description ?? "",
         assigneeAgentId: args.assigneeAgentId ?? null,
         priority: args.priority ?? "medium",
       });
@@ -245,7 +309,19 @@ async function executeTool(
     }
     if (name === "update_issue") {
       const { issueId, ...patch } = args;
-      const result = await pcFetch(serverUrl, `/companies/${companyId}/issues/${issueId}`, "PATCH", token, patch);
+      const result = await pcFetch(serverUrl, `/companies/${companyId}/issues/${encodeURIComponent(String(issueId))}`, "PATCH", token, patch);
+      return JSON.stringify(result, null, 2);
+    }
+    if (name === "checkout_issue") {
+      const issueId = encodeURIComponent(String(args.issueId ?? ""));
+      const result = await pcFetch(serverUrl, `/issues/${issueId}/checkout`, "POST", token, {});
+      return JSON.stringify(result, null, 2);
+    }
+    if (name === "post_comment") {
+      const issueId = encodeURIComponent(String(args.issueId ?? ""));
+      const result = await pcFetch(serverUrl, `/issues/${issueId}/comments`, "POST", token, {
+        body: args.body,
+      });
       return JSON.stringify(result, null, 2);
     }
     return `Unknown tool: ${name}`;
@@ -280,67 +356,39 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const serverUrl = asString(configObj.serverUrl, process.env.PAPERCLIP_SERVER_URL ?? "http://localhost:3100").trim();
   const skillsDir = getSkillsDir(configObj);
   const systemPrompt = asString(configObj.systemPrompt, "").trim();
-  const wakeReason = typeof context.wakeReason === "string" ? context.wakeReason.trim() : "";
+  const promptTemplate = asString(
+    configObj.promptTemplate,
+    "You are agent {{agent.name}} ({{agent.id}}) in company {{agent.companyId}}. Run ID: {{runId}}. Review your tasks and do your best work.",
+  );
+
+  const templateData = {
+    agentId: agent.id,
+    companyId: agent.companyId,
+    runId,
+    agent,
+    run: { id: runId },
+    context,
+  };
+
+  // Use the canonical wake prompt (issue details, comments, wake reason) from context.paperclipWake
+  const wakePrompt = renderPaperclipWakePrompt(context.paperclipWake);
+  // Render the agent's heartbeat template with agent/run data
+  const renderedPrompt = renderTemplate(promptTemplate, templateData);
+  const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
+
+  const userPrompt = joinPromptSections([wakePrompt, sessionHandoffNote, renderedPrompt]);
+
+  const messages: ChatMessage[] = [];
+  if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+  messages.push({ role: "user", content: userPrompt });
+
+  const toolDefs = authToken ? buildToolDefs(skillsDir) : [];
+  if (!authToken) await onLog("stderr", "[paperclip] Warning: no authToken — tools disabled\n");
+
   const taskId =
     (typeof context.taskId === "string" && context.taskId.replace(/\s/g, "")) ||
     (typeof context.issueId === "string" && context.issueId.replace(/\s/g, "")) ||
     null;
-  const promptTemplate = asString(configObj.promptTemplate, "").trim();
-
-  // Auto-fetch issue content so agent starts with full context.
-  // taskId may be a UUID or an identifier (e.g. "FUU-14" or "EEF861A8-0396").
-  // The server normalizes /^[A-Z]+-\d+$/ identifiers but not hex-segment ones,
-  // so we always try UUID-style lookup first, then fall back to list+filter.
-  let issueContext = "";
-  if (taskId && authToken) {
-    try {
-      let issue: Record<string, unknown> | null = null;
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId);
-      const isStdIdentifier = /^[A-Z]+-\d+$/i.test(taskId);
-      if (isUuid || isStdIdentifier) {
-        // Direct lookup — server handles both UUIDs and standard identifiers
-        issue = await pcFetch(serverUrl, `/companies/${agent.companyId}/issues/${encodeURIComponent(taskId)}`, "GET", authToken) as Record<string, unknown>;
-      } else {
-        // Non-standard identifier (e.g. hex-segment) — scan and match by identifier field
-        const all = await pcFetch(serverUrl, `/companies/${agent.companyId}/issues`, "GET", authToken);
-        const arr = Array.isArray(all) ? all as Record<string, unknown>[] : [];
-        issue = arr.find((i) => String(i.identifier ?? "").toUpperCase() === taskId.toUpperCase()) ?? null;
-      }
-      if (issue) {
-        const title = String(issue.title ?? "");
-        const description = String(issue.description ?? "");
-        const identifier = String(issue.identifier ?? "");
-        const priority = String(issue.priority ?? "");
-        const status = String(issue.status ?? "");
-        const project = issue.project as Record<string, unknown> | null ?? null;
-        const goal = issue.goal as Record<string, unknown> | null ?? null;
-        const parts = [
-          `## Task: ${identifier ? `[${identifier}] ` : ""}${title}`,
-          `Status: ${status} | Priority: ${priority}`,
-          project ? `Project: ${String(project.name ?? "")}` : "",
-          goal ? `Goal: ${String(goal.title ?? "")}` : "",
-          description ? `\n${description}` : "",
-        ].filter(Boolean);
-        issueContext = parts.join("\n");
-      }
-    } catch (err) {
-      await onLog("stderr", `[paperclip] Warning: could not fetch issue context: ${err instanceof Error ? err.message : String(err)}\n`);
-    }
-  }
-
-  const userPromptParts = [
-    `You are agent "${agent.name}" (id: ${agent.id}) in company ${agent.companyId}. Run ID: ${runId}.`,
-    issueContext ? `\n${issueContext}` : (taskId ? `Current task ID: ${taskId}` : ""),
-    wakeReason ? `Wake reason: ${wakeReason}` : "",
-    promptTemplate,
-  ].filter(Boolean);
-
-  const messages: ChatMessage[] = [];
-  if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
-  messages.push({ role: "user", content: userPromptParts.join("\n") });
-
-  const toolDefs = authToken ? buildToolDefs(skillsDir) : [];
-  if (!authToken) await onLog("stderr", "[paperclip] Warning: no authToken — tools disabled\n");
 
   await onLog("stdout", `[paperclip] OpenRouter start: model=${model} maxSteps=${maxSteps} taskId=${taskId ?? "none"} auth=${authToken ? "yes" : "NO"}\n`);
 
