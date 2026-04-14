@@ -282,27 +282,39 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const systemPrompt = asString(configObj.systemPrompt, "").trim();
   const wakeReason = typeof context.wakeReason === "string" ? context.wakeReason.trim() : "";
   const taskId =
-    (typeof context.taskId === "string" && context.taskId.trim()) ||
-    (typeof context.issueId === "string" && context.issueId.trim()) ||
+    (typeof context.taskId === "string" && context.taskId.replace(/\s/g, "")) ||
+    (typeof context.issueId === "string" && context.issueId.replace(/\s/g, "")) ||
     null;
   const promptTemplate = asString(configObj.promptTemplate, "").trim();
 
-  // Auto-fetch issue content so agent doesn't need to ask for context
+  // Auto-fetch issue content so agent starts with full context
   let issueContext = "";
   if (taskId && authToken) {
     try {
       const issue = await pcFetch(serverUrl, `/companies/${agent.companyId}/issues/${taskId}`, "GET", authToken) as Record<string, unknown>;
       const title = String(issue.title ?? "");
-      const body = String(issue.body ?? "");
-      issueContext = `\n\n## Your current task\n**${title}**\n\n${body}`.trim();
-    } catch {
-      // non-fatal — agent can still use list_issues tool
+      const description = String(issue.description ?? "");
+      const identifier = String(issue.identifier ?? "");
+      const priority = String(issue.priority ?? "");
+      const status = String(issue.status ?? "");
+      const project = issue.project as Record<string, unknown> | null ?? null;
+      const goal = issue.goal as Record<string, unknown> | null ?? null;
+      const parts = [
+        `## Task: ${identifier ? `[${identifier}] ` : ""}${title}`,
+        `Status: ${status} | Priority: ${priority}`,
+        project ? `Project: ${String(project.name ?? "")}` : "",
+        goal ? `Goal: ${String(goal.title ?? "")}` : "",
+        description ? `\n${description}` : "",
+      ].filter(Boolean);
+      issueContext = parts.join("\n");
+    } catch (err) {
+      await onLog("stderr", `[paperclip] Warning: could not fetch issue context: ${err instanceof Error ? err.message : String(err)}\n`);
     }
   }
 
   const userPromptParts = [
     `You are agent "${agent.name}" (id: ${agent.id}) in company ${agent.companyId}. Run ID: ${runId}.`,
-    taskId ? `Current task ID: ${taskId}${issueContext}` : "",
+    issueContext ? `\n${issueContext}` : (taskId ? `Current task ID: ${taskId}` : ""),
     wakeReason ? `Wake reason: ${wakeReason}` : "",
     promptTemplate,
   ].filter(Boolean);
@@ -314,7 +326,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const toolDefs = authToken ? buildToolDefs(skillsDir) : [];
   if (!authToken) await onLog("stderr", "[paperclip] Warning: no authToken — tools disabled\n");
 
-  await onLog("stdout", `[paperclip] OpenRouter start: model=${model} maxSteps=${maxSteps}\n`);
+  await onLog("stdout", `[paperclip] OpenRouter start: model=${model} maxSteps=${maxSteps} taskId=${taskId ?? "none"} auth=${authToken ? "yes" : "NO"}\n`);
 
   let responseText = "";
   let inputTokens = 0;
