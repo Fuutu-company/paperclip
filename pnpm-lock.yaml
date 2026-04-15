@@ -207,7 +207,7 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  packages/adapters/openrouter2-local:
+  packages/adapters/openrouter-local:
     dependencies:
       '@paperclipai/adapter-utils':
         specifier: workspace:*
@@ -501,7 +501,7 @@ importers:
         version: link:../packages/adapters/opencode-local
       '@paperclipai/adapter-openrouter-local':
         specifier: workspace:*
-        version: link:../packages/adapters/openrouter2-local
+        version: link:../packages/adapters/openrouter-local
       '@paperclipai/adapter-pi-local':
         specifier: workspace:*
         version: link:../packages/adapters/pi-local
@@ -661,7 +661,7 @@ importers:
         version: link:../packages/adapters/opencode-local
       '@paperclipai/adapter-openrouter-local':
         specifier: workspace:*
-        version: link:../packages/adapters/openrouter2-local
+        version: link:../packages/adapters/openrouter-local
       '@paperclipai/adapter-pi-local':
         specifier: workspace:*
         version: link:../packages/adapters/pi-local
