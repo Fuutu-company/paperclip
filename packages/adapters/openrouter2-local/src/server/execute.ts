@@ -11,7 +11,7 @@ import {
   buildPaperclipEnv,
   stringifyPaperclipWakePayload,
 } from "@paperclipai/adapter-utils/server-utils";
-import { DEFAULT_OPENROUTER2_MODEL, OPENROUTER2_API_BASE } from "../index.js";
+import { DEFAULT_OPENROUTER_MODEL, OPENROUTER_API_BASE } from "../index.js";
 
 // ---------------------------------------------------------------------------
 // OpenRouter chat types (plain fetch, no SDK)
@@ -292,7 +292,7 @@ async function executeTool(
         title: args.title ?? null,
         capabilities: args.capabilities ?? null,
         reportsTo: args.reportsTo ?? agentId,
-        adapterType: "openrouter2_local",
+        adapterType: "openrouter_local",
         adapterConfig,
         budgetMonthlyCents: args.budgetMonthlyCents ?? 500,
         permissions: { canCreateAgents: isManager },
@@ -351,8 +351,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const { runId, agent, config, context, onLog, onMeta, authToken } = ctx;
 
   const configObj = parseObject(config);
-  const model = asString(configObj.model, DEFAULT_OPENROUTER2_MODEL).trim();
-  const baseUrl = asString(configObj.baseUrl, OPENROUTER2_API_BASE).replace(/\/$/, "");
+  const model = asString(configObj.model, DEFAULT_OPENROUTER_MODEL).trim();
+  const baseUrl = asString(configObj.baseUrl, OPENROUTER_API_BASE).replace(/\/$/, "");
   const timeoutSec = asNumber(configObj.timeoutSec, 300);
   const maxTokens = asNumber(configObj.maxTokens, 8192);
   const temperature = asNumber(configObj.temperature, 0.7);
@@ -451,11 +451,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   if (onMeta) {
     await onMeta({
-      adapterType: "openrouter2_local",
+      adapterType: "openrouter_local",
       command: `fetch ${baseUrl}/chat/completions`,
       cwd: process.cwd(),
       commandArgs: [`model=${model}`, `maxSteps=${maxSteps}`, `maxTokens=${maxTokens}`],
-      commandNotes: [`OpenRouter2 HTTP adapter — no local CLI required`],
+      commandNotes: [`OpenRouter HTTP adapter — no local CLI required`],
       env: { OPENROUTER_API_KEY: apiKey ? "[set]" : "[missing]", ...env },
       prompt: userPrompt,
       promptMetrics,
@@ -475,7 +475,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     (typeof context.issueId === "string" && context.issueId.replace(/\s/g, "")) ||
     null;
 
-  await onLog("stdout", `[paperclip] OpenRouter2 start: model=${model} maxSteps=${maxSteps} taskId=${taskId ?? "none"} auth=${authToken ? "yes" : "NO"}\n`);
+  await onLog("stdout", `[paperclip] OpenRouter start: model=${model} maxSteps=${maxSteps} taskId=${taskId ?? "none"} auth=${authToken ? "yes" : "NO"}\n`);
 
   let responseText = "";
   let inputTokens = 0;
@@ -509,8 +509,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       });
       const text = await res.text();
       if (!res.ok) {
-        await onLog("stderr", `[paperclip] OpenRouter2 error ${res.status}: ${text.slice(0, 300)}\n`);
-        return { exitCode: 1, signal: null, timedOut: false, errorMessage: `OpenRouter2 ${res.status}: ${text.slice(0, 200)}` };
+        await onLog("stderr", `[paperclip] OpenRouter error ${res.status}: ${text.slice(0, 300)}\n`);
+        return { exitCode: 1, signal: null, timedOut: false, errorMessage: `OpenRouter ${res.status}: ${text.slice(0, 200)}` };
       }
       resp = JSON.parse(text) as ChatResponse;
     } catch (err) {
@@ -550,7 +550,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   }
 
   await onLog("stdout", `${responseText}\n`);
-  await onLog("stdout", `[paperclip] OpenRouter2 done: model=${model} in=${inputTokens} out=${outputTokens}\n`);
+  await onLog("stdout", `[paperclip] OpenRouter done: model=${model} in=${inputTokens} out=${outputTokens}\n`);
 
   return {
     exitCode: 0,

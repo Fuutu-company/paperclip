@@ -64,7 +64,7 @@ import {
 } from "@paperclipai/adapter-codex-local";
 import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
-import { DEFAULT_OPENROUTER2_MODEL } from "@paperclipai/adapter-openrouter2-local";
+import { DEFAULT_OPENROUTER_MODEL } from "@paperclipai/adapter-openrouter-local";
 import { ensureOpenCodeModelConfiguredAndAvailable } from "@paperclipai/adapter-opencode-local/server";
 import {
   loadDefaultAgentInstructionsBundle,
@@ -82,7 +82,7 @@ export function agentRoutes(db: Db) {
     opencode_local: "instructionsFilePath",
     cursor: "instructionsFilePath",
     pi_local: "instructionsFilePath",
-    openrouter2_local: "instructionsFilePath",
+    openrouter_local: "instructionsFilePath",
   };
   const DEFAULT_MANAGED_INSTRUCTIONS_ADAPTER_TYPES = new Set(Object.keys(DEFAULT_INSTRUCTIONS_PATH_KEYS));
   const KNOWN_INSTRUCTIONS_PATH_KEYS = new Set(["instructionsFilePath", "agentsMdPath"]);
@@ -507,8 +507,8 @@ export function agentRoutes(db: Db) {
       next.model = DEFAULT_GEMINI_LOCAL_MODEL;
       return ensureGatewayDeviceKey(adapterType, next);
     }
-    if (adapterType === "openrouter2_local" && !asNonEmptyString(next.model)) {
-      next.model = DEFAULT_OPENROUTER2_MODEL;
+    if (adapterType === "openrouter_local" && !asNonEmptyString(next.model)) {
+      next.model = DEFAULT_OPENROUTER_MODEL;
     }
     // OpenCode requires explicit model selection — no default
     if (adapterType === "cursor" && !asNonEmptyString(next.model)) {
@@ -648,7 +648,7 @@ export function agentRoutes(db: Db) {
     "gemini_local",
     "opencode_local",
     "pi_local",
-    "openrouter2_local",
+    "openrouter_local",
   ]);
 
   function shouldMaterializeRuntimeSkillsForAdapter(adapterType: string) {

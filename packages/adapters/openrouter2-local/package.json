@@ -1,5 +1,5 @@
 {
-  "name": "@paperclipai/adapter-openrouter2-local",
+  "name": "@paperclipai/adapter-openrouter-local",
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",

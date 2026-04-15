@@ -1,2 +1,2 @@
-export { parseOpenRouter2StdoutLine } from "./parse-stdout.js";
-export { buildOpenRouter2LocalConfig } from "./build-config.js";
+export { parseOpenRouterStdoutLine } from "./parse-stdout.js";
+export { buildOpenRouterLocalConfig } from "./build-config.js";

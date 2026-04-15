@@ -1,7 +1,7 @@
-export const type = "openrouter2_local";
-export const label = "OpenRouter2";
-export const DEFAULT_OPENROUTER2_MODEL = "google/gemini-3.1-flash-lite-preview";
-export const OPENROUTER2_API_BASE = "https://openrouter.ai/api/v1";
+export const type = "openrouter_local";
+export const label = "OpenRouter";
+export const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-flash-lite-preview";
+export const OPENROUTER_API_BASE = "https://openrouter.ai/api/v1";
 
 export const models = [
   { id: "google/gemma-4-26b-a4b-it", label: "Gemma 4 26B — $0.08/$0.35" },
@@ -13,9 +13,9 @@ export const models = [
   { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro — $2/$12 ★ owner only" },
 ];
 
-export const agentConfigurationDoc = `# openrouter2_local agent configuration
+export const agentConfigurationDoc = `# openrouter_local agent configuration
 
-Adapter: openrouter2_local
+Adapter: openrouter_local
 
 Use when:
 - You want access to multiple AI models via a single API key

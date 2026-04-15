@@ -8,7 +8,7 @@ import {
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
-async function buildOpenRouter2SkillSnapshot(config: Record<string, unknown>): Promise<AdapterSkillSnapshot> {
+async function buildOpenRouterSkillSnapshot(config: Record<string, unknown>): Promise<AdapterSkillSnapshot> {
   const availableEntries = await readPaperclipRuntimeSkillEntries(config, __moduleDir);
   const availableByKey = new Map(availableEntries.map((entry) => [entry.key, entry]));
   const desiredSkills = resolvePaperclipDesiredSkillNames(config, availableEntries);
@@ -54,7 +54,7 @@ async function buildOpenRouter2SkillSnapshot(config: Record<string, unknown>): P
   entries.sort((a, b) => a.key.localeCompare(b.key));
 
   return {
-    adapterType: "openrouter2_local",
+    adapterType: "openrouter_local",
     supported: true,
     mode: "ephemeral",
     desiredSkills,
@@ -63,13 +63,13 @@ async function buildOpenRouter2SkillSnapshot(config: Record<string, unknown>): P
   };
 }
 
-export async function listOpenRouter2Skills(ctx: AdapterSkillContext): Promise<AdapterSkillSnapshot> {
-  return buildOpenRouter2SkillSnapshot(ctx.config);
+export async function listOpenRouterSkills(ctx: AdapterSkillContext): Promise<AdapterSkillSnapshot> {
+  return buildOpenRouterSkillSnapshot(ctx.config);
 }
 
-export async function syncOpenRouter2Skills(
+export async function syncOpenRouterSkills(
   ctx: AdapterSkillContext,
   _desiredSkills: string[],
 ): Promise<AdapterSkillSnapshot> {
-  return buildOpenRouter2SkillSnapshot(ctx.config);
+  return buildOpenRouterSkillSnapshot(ctx.config);
 }

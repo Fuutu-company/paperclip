@@ -36,13 +36,13 @@ import {
 } from "@paperclipai/adapter-gemini-local/server";
 import { agentConfigurationDoc as geminiAgentConfigurationDoc, models as geminiModels } from "@paperclipai/adapter-gemini-local";
 import {
-  execute as openRouter2Execute,
-  testEnvironment as openRouter2TestEnvironment,
-  listOpenRouter2Skills,
-  syncOpenRouter2Skills,
-  getQuotaWindows as openRouter2GetQuotaWindows,
-} from "@paperclipai/adapter-openrouter2-local/server";
-import { agentConfigurationDoc as openRouter2AgentConfigurationDoc, models as openRouter2Models } from "@paperclipai/adapter-openrouter2-local";
+  execute as openRouterExecute,
+  testEnvironment as openRouterTestEnvironment,
+  listOpenRouterSkills,
+  syncOpenRouterSkills,
+  getQuotaWindows as openRouterGetQuotaWindows,
+} from "@paperclipai/adapter-openrouter-local/server";
+import { agentConfigurationDoc as openRouterAgentConfigurationDoc, models as openRouterModels } from "@paperclipai/adapter-openrouter-local";
 import {
   execute as openCodeExecute,
   listOpenCodeSkills,
@@ -138,16 +138,16 @@ const cursorLocalAdapter: ServerAdapterModule = {
   agentConfigurationDoc: cursorAgentConfigurationDoc,
 };
 
-const openRouter2LocalAdapter: ServerAdapterModule = {
-  type: "openrouter2_local",
-  execute: openRouter2Execute,
-  testEnvironment: openRouter2TestEnvironment,
-  listSkills: listOpenRouter2Skills,
-  syncSkills: syncOpenRouter2Skills,
-  models: openRouter2Models,
+const openRouterLocalAdapter: ServerAdapterModule = {
+  type: "openrouter_local",
+  execute: openRouterExecute,
+  testEnvironment: openRouterTestEnvironment,
+  listSkills: listOpenRouterSkills,
+  syncSkills: syncOpenRouterSkills,
+  models: openRouterModels,
   supportsLocalAgentJwt: true,
-  agentConfigurationDoc: openRouter2AgentConfigurationDoc,
-  getQuotaWindows: openRouter2GetQuotaWindows,
+  agentConfigurationDoc: openRouterAgentConfigurationDoc,
+  getQuotaWindows: openRouterGetQuotaWindows,
 };
 
 const geminiLocalAdapter: ServerAdapterModule = {
@@ -232,7 +232,7 @@ function registerBuiltInAdapters() {
     piLocalAdapter,
     cursorLocalAdapter,
     geminiLocalAdapter,
-    openRouter2LocalAdapter,
+    openRouterLocalAdapter,
     openclawGatewayAdapter,
     hermesLocalAdapter,
     processAdapter,

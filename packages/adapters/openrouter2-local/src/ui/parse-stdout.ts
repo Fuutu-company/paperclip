@@ -2,7 +2,7 @@ import type { TranscriptEntry } from "@paperclipai/adapter-utils";
 
 const TOOL_LOG_RE = /^\[tool:([^\]]+)\] (.*)$/s;
 
-export function parseOpenRouter2StdoutLine(line: string, ts: string): TranscriptEntry[] {
+export function parseOpenRouterStdoutLine(line: string, ts: string): TranscriptEntry[] {
   const trimmed = line.trim();
   if (!trimmed) return [];
 

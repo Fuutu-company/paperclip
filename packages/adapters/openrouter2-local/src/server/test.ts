@@ -4,7 +4,7 @@ import type {
   AdapterEnvironmentTestResult,
 } from "@paperclipai/adapter-utils";
 import { asString, asNumber, parseObject } from "@paperclipai/adapter-utils/server-utils";
-import { DEFAULT_OPENROUTER2_MODEL, OPENROUTER2_API_BASE } from "../index.js";
+import { DEFAULT_OPENROUTER_MODEL, OPENROUTER_API_BASE } from "../index.js";
 
 function summarizeStatus(checks: AdapterEnvironmentCheck[]): AdapterEnvironmentTestResult["status"] {
   if (checks.some((c) => c.level === "error")) return "fail";
@@ -27,14 +27,14 @@ export async function testEnvironment(
   if (apiKey) {
     const source = configApiKey ? "adapter config" : "server environment";
     checks.push({
-      code: "openrouter2_api_key_present",
+      code: "openrouter_api_key_present",
       level: "info",
       message: "OpenRouter API key is configured.",
       detail: `Detected in ${source}.`,
     });
   } else {
     checks.push({
-      code: "openrouter2_api_key_missing",
+      code: "openrouter_api_key_missing",
       level: "error",
       message: "No OpenRouter API key found.",
       hint: "Set OPENROUTER_API_KEY in adapter env or server environment variables.",
@@ -47,12 +47,12 @@ export async function testEnvironment(
     };
   }
 
-  const model = asString(config.model, DEFAULT_OPENROUTER2_MODEL).trim();
-  const baseUrl = asString(config.baseUrl, OPENROUTER2_API_BASE).replace(/\/$/, "");
+  const model = asString(config.model, DEFAULT_OPENROUTER_MODEL).trim();
+  const baseUrl = asString(config.baseUrl, OPENROUTER_API_BASE).replace(/\/$/, "");
   const timeoutSec = Math.max(1, asNumber(config.helloProbeTimeoutSec, 15));
 
   checks.push({
-    code: "openrouter2_model_configured",
+    code: "openrouter_model_configured",
     level: "info",
     message: `Model configured: ${model}`,
   });
@@ -85,7 +85,7 @@ export async function testEnvironment(
       const snippet = body.slice(0, 200);
       if (response.status === 401) {
         checks.push({
-          code: "openrouter2_probe_auth_failed",
+          code: "openrouter_probe_auth_failed",
           level: "error",
           message: "OpenRouter API key is invalid or unauthorized.",
           detail: snippet,
@@ -93,21 +93,21 @@ export async function testEnvironment(
         });
       } else if (response.status === 402) {
         checks.push({
-          code: "openrouter2_probe_no_credits",
+          code: "openrouter_probe_no_credits",
           level: "error",
           message: "OpenRouter account has no credits.",
           hint: "Add credits at openrouter.ai/credits.",
         });
       } else if (response.status === 429) {
         checks.push({
-          code: "openrouter2_probe_rate_limited",
+          code: "openrouter_probe_rate_limited",
           level: "warn",
           message: "OpenRouter rate limit hit during probe.",
           hint: "Try again in a moment.",
         });
       } else {
         checks.push({
-          code: "openrouter2_probe_http_error",
+          code: "openrouter_probe_http_error",
           level: "error",
           message: `OpenRouter probe returned HTTP ${response.status}.`,
           detail: snippet,
@@ -118,7 +118,7 @@ export async function testEnvironment(
       const content = data.choices?.[0]?.message?.content ?? "";
       const hasHello = /\bhello\b/i.test(content);
       checks.push({
-        code: hasHello ? "openrouter2_probe_passed" : "openrouter2_probe_unexpected_output",
+        code: hasHello ? "openrouter_probe_passed" : "openrouter_probe_unexpected_output",
         level: hasHello ? "info" : "warn",
         message: hasHello
           ? "OpenRouter hello probe succeeded."
@@ -130,7 +130,7 @@ export async function testEnvironment(
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       checks.push({
-        code: "openrouter2_probe_timed_out",
+        code: "openrouter_probe_timed_out",
         level: "warn",
         message: `OpenRouter probe timed out after ${timeoutSec}s.`,
         hint: "Check your network connection and try again.",
@@ -138,7 +138,7 @@ export async function testEnvironment(
     } else {
       const message = err instanceof Error ? err.message : String(err);
       checks.push({
-        code: "openrouter2_probe_fetch_error",
+        code: "openrouter_probe_fetch_error",
         level: "error",
         message: "OpenRouter probe failed with a network error.",
         detail: message,

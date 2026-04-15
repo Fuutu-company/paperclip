@@ -1,5 +1,5 @@
 import type { CreateConfigValues } from "@paperclipai/adapter-utils";
-import { DEFAULT_OPENROUTER2_MODEL } from "../index.js";
+import { DEFAULT_OPENROUTER_MODEL } from "../index.js";
 
 function parseEnvVars(text: string): Record<string, string> {
   const env: Record<string, string> = {};
@@ -44,9 +44,9 @@ function parseEnvBindings(bindings: unknown): Record<string, unknown> {
   return env;
 }
 
-export function buildOpenRouter2LocalConfig(v: CreateConfigValues): Record<string, unknown> {
+export function buildOpenRouterLocalConfig(v: CreateConfigValues): Record<string, unknown> {
   const ac: Record<string, unknown> = {};
-  ac.model = v.model || DEFAULT_OPENROUTER2_MODEL;
+  ac.model = v.model || DEFAULT_OPENROUTER_MODEL;
   if (v.promptTemplate) ac.promptTemplate = v.promptTemplate;
   if (v.bootstrapPrompt) ac.bootstrapPromptTemplate = v.bootstrapPrompt;
   ac.timeoutSec = 300;
