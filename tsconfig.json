@@ -13,7 +13,6 @@
     { "path": "./packages/adapters/gemini-local" },
     { "path": "./packages/adapters/openclaw-gateway" },
     { "path": "./packages/adapters/opencode-local" },
-    { "path": "./packages/adapters/openrouter-local" },
     { "path": "./packages/adapters/openrouter2-local" },
     { "path": "./packages/adapters/pi-local" },
     { "path": "./server" },

@@ -89,8 +89,8 @@ const adapterDisplayMap: Record<string, AdapterDisplayInfo> = {
     description: "Local Cursor agent",
     icon: MousePointer2,
   },
-  openrouter_local: {
-    label: "OpenRouter",
+  openrouter2_local: {
+    label: "OpenRouter2",
     description: "Hundreds of AI models via OpenRouter API",
     icon: Sparkles,
   },

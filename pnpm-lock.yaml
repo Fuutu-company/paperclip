@@ -512,9 +512,6 @@ importers:
       '@paperclipai/adapter-opencode-local':
         specifier: workspace:*
         version: link:../packages/adapters/opencode-local
-      '@paperclipai/adapter-openrouter-local':
-        specifier: workspace:*
-        version: link:../packages/adapters/openrouter-local
       '@paperclipai/adapter-openrouter2-local':
         specifier: workspace:*
         version: link:../packages/adapters/openrouter2-local
@@ -675,9 +672,6 @@ importers:
       '@paperclipai/adapter-opencode-local':
         specifier: workspace:*
         version: link:../packages/adapters/opencode-local
-      '@paperclipai/adapter-openrouter-local':
-        specifier: workspace:*
-        version: link:../packages/adapters/openrouter-local
       '@paperclipai/adapter-openrouter2-local':
         specifier: workspace:*
         version: link:../packages/adapters/openrouter2-local
